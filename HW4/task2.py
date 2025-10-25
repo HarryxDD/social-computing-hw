@@ -4,6 +4,13 @@ import numpy as np
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 import warnings
+import matplotlib.pyplot as plt
+import seaborn as sns
+# Import preprocess_text and generate_topic_label from task1
+from task1 import preprocess_text, generate_topic_label
+from gensim.models import LdaModel
+from gensim import corpora
+
 warnings.filterwarnings('ignore')
 
 """
@@ -26,7 +33,9 @@ dbfile = 'database.sqlite'
 # Establish a connection to the db
 conn = sqlite3.connect(dbfile)
 
-def analyze_sentiment(text):
+sia = SentimentIntensityAnalyzer()
+
+def analyze_sentiment_batch(df, content_column='content'):
     """
     Analyze sentiment using VADER and return all scores.
     
@@ -44,9 +53,16 @@ def analyze_sentiment(text):
     I choose these points because they are standard thresholds
     """
 
-    sia = SentimentIntensityAnalyzer()
-    scores = sia.polarity_scores(text)
-    return scores
+    # Generic function for both posts and comments
+    sentiment_results = df[content_column].apply(lambda x: sia.polarity_scores(x))
+    
+    df['compound'] = sentiment_results.apply(lambda x: x['compound'])
+    df['positive'] = sentiment_results.apply(lambda x: x['pos'])
+    df['neutral'] = sentiment_results.apply(lambda x: x['neu'])
+    df['negative'] = sentiment_results.apply(lambda x: x['neg'])
+    df['sentiment_category'] = df['compound'].apply(categorize_sentiment)
+    
+    return df
 
 def categorize_sentiment(compound_score):
     """Categorize sentiment based on compound score"""
@@ -67,34 +83,7 @@ def analyze_posts_sentiment():
     
     print(f"Analyzing {len(posts_df)} posts...")
     
-    # Analyze sentiment for each post
-    # Loop through each post and calculate VADER scores
-    compound_scores = []
-    positive_scores = []
-    neutral_scores = []
-    negative_scores = []
-    
-    for content in posts_df['content']:
-        scores = analyze_sentiment(content)
-        compound_scores.append(scores['compound'])
-        positive_scores.append(scores['pos'])
-        neutral_scores.append(scores['neu'])
-        negative_scores.append(scores['neg'])
-    
-    # Add scores to dataframe by creating new columns
-    posts_df['compound'] = compound_scores
-    posts_df['positive'] = positive_scores
-    posts_df['neutral'] = neutral_scores
-    posts_df['negative'] = negative_scores
-    
-    # Categorize each post as Positive, Neutral, or Negative
-    sentiment_categories = []
-    for score in compound_scores:
-        category = categorize_sentiment(score)
-        sentiment_categories.append(category)
-    posts_df['sentiment_category'] = sentiment_categories
-    
-    return posts_df
+    return analyze_sentiment_batch(posts_df)
 
 def analyze_comments_sentiment():
     # Load all comments that have content
@@ -106,34 +95,7 @@ def analyze_comments_sentiment():
     
     print(f"Analyzing {len(comments_df)} comments...")
     
-    # Analyze sentiment for each comment
-    # Loop through each comment and calculate VADER scores
-    compound_scores = []
-    positive_scores = []
-    neutral_scores = []
-    negative_scores = []
-    
-    for content in comments_df['content']:
-        scores = analyze_sentiment(content)
-        compound_scores.append(scores['compound'])
-        positive_scores.append(scores['pos'])
-        neutral_scores.append(scores['neu'])
-        negative_scores.append(scores['neg'])
-    
-    # Add scores to dataframe
-    comments_df['compound'] = compound_scores
-    comments_df['positive'] = positive_scores
-    comments_df['neutral'] = neutral_scores
-    comments_df['negative'] = negative_scores
-    
-    # Categorize each comment as Positive, Neutral, or Negative
-    sentiment_categories = []
-    for score in compound_scores:
-        category = categorize_sentiment(score)
-        sentiment_categories.append(category)
-    comments_df['sentiment_category'] = sentiment_categories
-    
-    return comments_df
+    return analyze_sentiment_batch(comments_df)
 
 def display_overall_sentiment(posts_df, comments_df):
     # Posts sentiment summary
@@ -193,32 +155,23 @@ def assign_topics_to_posts(posts_df):
     """
     print("--- Assigning topics to posts using LDA model ---")
     
-    # Import necessary functions from task1
-    from task1 import preprocess_text, create_dictionary_and_corpus, train_lda_model, generate_topic_label
-    
     print("\nPreprocessing posts...")
     posts_df['processed_tokens'] = posts_df['content'].apply(preprocess_text)
     documents = posts_df['processed_tokens'].tolist()
-    
-    print("Creating dictionary and corpus...")
-    dictionary, corpus = create_dictionary_and_corpus(documents)
-    
-    # Train LDA with optimal K=20 (from Exercise 4.1)
-    print("Training LDA model with K=20...")
-    print("(20 is chosen based on prior analysis in Exercise 4.1)")
-    lda_model = train_lda_model(corpus, dictionary, num_topics=20)
+
+    print("Loading LDA model and dictionary from disk...")
+    lda_model = LdaModel.load('lda_model_k20.model')
+    dictionary = corpora.Dictionary.load('lda_dictionary.dict')
+
+    print("Creating corpus using loaded dictionary...")
+    corpus = [dictionary.doc2bow(tokens) for tokens in documents]
     
     # Assign dominant topic to each post
     print("Assigning topics to posts...")
     topics = []
     for doc_topics in lda_model.get_document_topics(corpus):
         if doc_topics:
-            max_prob = -1
-            dominant_topic = -1
-            for topic_id, prob in doc_topics:
-                if prob > max_prob:
-                    max_prob = prob
-                    dominant_topic = topic_id
+            dominant_topic = max(doc_topics, key=lambda x: x[1])[0]
             topics.append(dominant_topic)
         else:
             topics.append(-1)  # No topic assigned
@@ -236,14 +189,9 @@ def assign_topics_to_posts(posts_df):
         label = generate_topic_label(words)
         topic_labels[idx] = label
     
-    # Assign topic labels and keywords using explicit for-loop
-    topic_label_list = []
-    topic_keywords_list = []
-    for topic_id in posts_df['topic_id']:
-        topic_label_list.append(topic_labels.get(topic_id, 'Unknown'))
-        topic_keywords_list.append(topic_keywords.get(topic_id, ''))
-    posts_df['topic_label'] = topic_label_list
-    posts_df['topic_keywords'] = topic_keywords_list
+    # Assign topic labels and keywords
+    posts_df['topic_label'] = posts_df['topic_id'].apply(lambda x: topic_labels.get(x, 'Unknown'))
+    posts_df['topic_keywords'] = posts_df['topic_id'].apply(lambda x: topic_keywords.get(x, ''))
     
     print(f"Successfully assigned topics to {len(posts_df[posts_df['topic_id'] != -1])} posts")
     
@@ -265,30 +213,27 @@ def analyze_sentiment_by_topic(posts_df, topic_labels, topic_keywords):
     topic_sentiment.columns = ['_'.join(col).strip() for col in topic_sentiment.columns.values]
     topic_sentiment = topic_sentiment.reset_index()
     
-    # Add topic labels and keywords using explicit for-loops
-    topic_name_list = []
-    topic_keywords_list = []
-    for topic_id in topic_sentiment['topic_id']:
-        topic_name_list.append(topic_labels.get(topic_id, 'Unknown'))
-        topic_keywords_list.append(topic_keywords.get(topic_id, ''))
-    topic_sentiment['topic_name'] = topic_name_list
-    topic_sentiment['keywords'] = topic_keywords_list
+    # Add topic labels and keywords
+    topic_sentiment['topic_name'] = topic_sentiment['topic_id'].apply(lambda x: topic_labels.get(x, 'Unknown'))
+    topic_sentiment['keywords'] = topic_sentiment['topic_id'].apply(lambda x: topic_keywords.get(x, ''))
     
     # Sort by average compound score
     topic_sentiment = topic_sentiment.sort_values('compound_mean', ascending=False)
     
     print(f"\nSentiment Summary by Topic (sorted by average compound score):")
-    print(f"{'Rank':<6} {'Topic Name':<30} {'Avg Score':<12} {'Posts':<8} {'Pos%':<8} {'Neg%':<8}")
+    print(f"{'Rank':<6} {'Topic Name':<35} {'Avg Score':<12} {'Posts':<8} {'Pos%':<8} {'Neg%':<8}")
     print("-"*80)
     
     for rank, (_, row) in enumerate(topic_sentiment.iterrows(), 1):
+        topic_no = row['topic_id']
         topic_name = row['topic_name']
         avg_score = row['compound_mean']
         post_count = int(row['compound_count'])
         pos_pct = row['positive_mean'] * 100
         neg_pct = row['negative_mean'] * 100
         
-        print(f"{rank:<6} {topic_name:<30} {avg_score:<12.4f} {post_count:<8} {pos_pct:<8.1f} {neg_pct:<8.1f}")
+        topic_display = f"{topic_name}-({topic_no})"
+        print(f"{rank:<6} {topic_display:<35} {avg_score:<12.4f} {post_count:<8} {pos_pct:<8.1f} {neg_pct:<8.1f}")
     
     # Detailed analysis for top 3 most positive and negative topics
     print("\nTOP 3 MOST POSITIVE TOPICS")
@@ -329,6 +274,49 @@ def analyze_sentiment_by_topic(posts_df, topic_labels, topic_keywords):
     
     return topic_sentiment
 
+"""
+I create this visualization function to easily see sentiment distribution
+The first plot shows average sentiment by topic
+The second plot compares sentiment distribution between posts and comments
+"""
+def visualize_sentiment_analysis(posts_df, comments_df, topic_sentiment):
+    sns.set_style("whitegrid")
+    fig, axes = plt.subplots(2, 1, figsize=(12, 10))
+    
+    # Sentiment by Topic Plot
+    plot_data = topic_sentiment.sort_values('compound_mean', ascending=True)
+    colors = ['#e74c3c' if s < 0.2 else '#f39c12' if s < 0.35 else '#27ae60' 
+              for s in plot_data['compound_mean']]
+    
+    axes[0].barh(range(len(plot_data)), plot_data['compound_mean'], color=colors, alpha=0.7)
+    axes[0].set_yticks(range(len(plot_data)))
+    axes[0].set_yticklabels([f"{row['topic_name'][:25]}" for _, row in plot_data.iterrows()], fontsize=9)
+    axes[0].set_xlabel('Average Sentiment Score', fontweight='bold')
+    axes[0].set_title('Sentiment by Topic', fontsize=13, fontweight='bold')
+    axes[0].axvline(x=0, color='black', linestyle='--', linewidth=1)
+    axes[0].grid(axis='x', alpha=0.3)
+    
+    # Posts vs Comments Distribution Plot
+    categories = ['Positive', 'Neutral', 'Negative']
+    posts_vals = [posts_df['sentiment_category'].value_counts().get(c, 0) for c in categories]
+    comments_vals = [comments_df['sentiment_category'].value_counts().get(c, 0) for c in categories]
+    
+    x = np.arange(len(categories))
+    width = 0.35
+    axes[1].bar(x - width/2, posts_vals, width, label='Posts', color='#3498db', alpha=0.8)
+    axes[1].bar(x + width/2, comments_vals, width, label='Comments', color='#e74c3c', alpha=0.8)
+    axes[1].set_xticks(x)
+    axes[1].set_xticklabels(categories)
+    axes[1].set_ylabel('Count', fontweight='bold')
+    axes[1].set_title('Sentiment Distribution: Posts vs Comments', fontsize=13, fontweight='bold')
+    axes[1].legend()
+    axes[1].grid(axis='y', alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig('sentiment_visualization.png', dpi=300, bbox_inches='tight')
+    print(f"\nVisualization saved as 'sentiment_visualization.png'")
+    plt.close()
+
 def main():
     # Step 1: Analyze sentiment of posts
     posts_df = analyze_posts_sentiment()
@@ -344,6 +332,9 @@ def main():
     
     # Step 5: Analyze sentiment variation across topics
     topic_sentiment = analyze_sentiment_by_topic(posts_df, topic_labels, topic_keywords)
+
+    # Step 6: Visualize sentiment analysis
+    visualize_sentiment_analysis(posts_df, comments_df, topic_sentiment)
     
 if __name__ == "__main__":
     try:
@@ -387,39 +378,34 @@ The platform has a slightly positive tone
 --- Assigning topics to posts using LDA model ---
 
 Preprocessing posts...
-Creating dictionary and corpus...
-Dictionary created with 707 terms
-Training LDA model with K=20...
-(20 is chosen based on prior analysis in Exercise 4.1)
-
-Training final LDA model with K=20 topics...
-Model training completed
+Loading LDA model and dictionary from disk...
+Creating corpus using loaded dictionary...
 Assigning topics to posts...
 Successfully assigned topics to 1303 posts
 
 Sentiment Summary by Topic (sorted by average compound score):
-Rank   Topic Name                     Avg Score    Posts    Pos%     Neg%
+Rank   Topic Name                          Avg Score    Posts    Pos%     Neg%
 --------------------------------------------------------------------------------
-1      Entertainment & Media          0.5401       53       24.7     4.3
-2      Daily Life & Reflections       0.4645       60       22.6     2.6
-3      Travel & Photography           0.4042       68       16.3     2.9
-4      Mental Health                  0.3817       49       19.1     3.2
-5      Nature & Outdoors              0.3715       57       19.9     5.3
-6      Entertainment & Media          0.3518       65       18.1     4.5
-7      Climate & Environment          0.3477       78       16.3     3.2
-8      Daily Life & Reflections       0.3340       62       17.4     4.8
-9      Daily Life & Reflections       0.3168       43       17.7     5.8
-10     Daily Life & Reflections       0.3149       87       19.2     6.1
-11     Daily Life & Reflections       0.3133       53       17.5     5.1
-12     Technology & Gaming            0.3072       64       18.4     4.6
-13     Food & Cooking                 0.3027       68       21.7     7.0
-14     Personal Growth                0.2901       51       17.0     6.3
-15     Daily Life & Reflections       0.2774       42       14.3     3.3
-16     Personal Growth                0.2573       76       16.1     6.5
-17     Mental Health                  0.2409       98       22.3     9.6
-18     Books & Reading                0.1894       92       16.6     9.2
-19     Politics & News                0.1430       84       14.1     7.8
-20     Community & Social             0.1202       53       16.7     11.0
+1      Entertainment & Media-(17)          0.5401       53       24.7     4.3
+2      Daily Life & Reflections-(0)        0.4645       60       22.6     2.6
+3      Travel & Photography-(4)            0.4042       68       16.3     2.9
+4      Mental Health-(1)                   0.3817       49       19.1     3.2
+5      Nature & Outdoors-(7)               0.3715       57       19.9     5.3
+6      Entertainment & Media-(15)          0.3518       65       18.1     4.5
+7      Climate & Environment-(19)          0.3477       78       16.3     3.2
+8      Daily Life & Reflections-(18)       0.3340       62       17.4     4.8
+9      Daily Life & Reflections-(3)        0.3168       43       17.7     5.8
+10     Daily Life & Reflections-(12)       0.3149       87       19.2     6.1
+11     Daily Life & Reflections-(5)        0.3133       53       17.5     5.1
+12     Technology & Gaming-(2)             0.3072       64       18.4     4.6
+13     Food & Cooking-(11)                 0.3027       68       21.7     7.0
+14     Personal Growth-(13)                0.2901       51       17.0     6.3
+15     Daily Life & Reflections-(9)        0.2774       42       14.3     3.3
+16     Personal Growth-(14)                0.2573       76       16.1     6.5
+17     Mental Health-(6)                   0.2409       98       22.3     9.6
+18     Books & Reading-(10)                0.1894       92       16.6     9.2
+19     Politics & News-(8)                 0.1430       84       14.1     7.8
+20     Community & Social-(16)             0.1202       53       16.7     11.0
 
 TOP 3 MOST POSITIVE TOPICS
 
@@ -460,4 +446,6 @@ TOP 3 MOST NEGATIVE TOPICS (Actually 'Least Positive')
    Average compound: 0.1894 | Median: 0.3902
    Number of posts: 92
    Positive proportion: 0.166 | Negative proportion: 0.092
+
+Visualization saved as 'sentiment_visualization.png'
 """

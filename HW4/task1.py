@@ -313,13 +313,17 @@ def main():
     
     # Train final LDA model with optimal K
     lda_model = train_lda_model(corpus, dictionary, num_topics=optimal_k)
-    
+
+    # Save model and dictionary for use in task 4.2
+    lda_model.save('lda_model_k20.model')
+    dictionary.save('lda_dictionary.dict')
+
     # Evaluate final model
     coherence_score, perplexity = evaluate_model(lda_model, corpus, dictionary, documents)
-    
+
     # Extract and display all topics
     topics_data = extract_and_display_topics(lda_model, num_topics=optimal_k, num_words=10)
-    
+
     # Analyze distribution and identify TOP 10 topics with most posts
     analyze_topic_distribution(lda_model, corpus, num_topics=optimal_k, topics_data=topics_data)
     
