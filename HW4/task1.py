@@ -57,6 +57,16 @@ def preprocess_text(text):
     
     # Remove stopwords and short tokens
     stop_words = set(stopwords.words('english'))
+
+    """
+    I add some custom stopwords that are too generic and do not contribute to topic meaning
+    """
+    custom_stopwords = {
+        'today', 'day', 'time', 'got', 'went', 'made', 'make', 'tried', 'try', 'started', 'spent', 'new', 'old', 'still', 'finally', 'just', 'perfect', 'amazing', 'bad', 'like', 'love', 'really', 'very', 'always', 'never', 'thing', 'things', 'something', 'anything', 'people', 'actually', 'basically', 'literally', 'damn', 'now', 'then', 'ago'
+    }
+
+    stop_words.update(custom_stopwords)
+
     tokens = [token for token in tokens if token not in stop_words and len(token) > 2]
     
     # Lemmatize to reduce words to base form
@@ -82,26 +92,37 @@ def generate_topic_label(top_words):
     
     The function uses keyword matching to suggest labels, but these should be reviewed and adjusted based on domain knowledge and context.
     """
-    # Common keyword patterns to identify topics
     keywords_map = {
-        'Food & Cooking': ['recipe', 'cooking', 'food', 'eat', 'vegan', 'kitchen', 'meal', 'dish', 'chef', 'cook', 'taste'],
-        'Fitness & Health': ['workout', 'fitness', 'gym', 'exercise', 'run', 'yoga', 'training', 'hit', 'cardio', 'weight'],
-        'Mental Health': ['mental', 'therapy', 'anxiety', 'depression', 'wellness', 'mindfulness', 'feeling', 'feel', 'emotional', 'stress'],
-        'Books & Reading': ['book', 'read', 'reading', 'novel', 'author', 'library', 'story', 'chapter', 'literature', 'page'],
-        'Nature & Outdoors': ['nature', 'hiking', 'outdoor', 'mountain', 'trail', 'forest', 'naturelover', 'fresh', 'view', 'wild'],
-        'Technology & Gaming': ['tech', 'game', 'gaming', 'technology', 'computer', 'software', 'player', 'session', 'digital', 'online'],
-        'Politics & News': ['politics', 'political', 'government', 'election', 'news', 'debate', 'vote', 'politician', 'policy', 'campaign'],
-        'DIY & Crafts': ['diy', 'craft', 'crafting', 'project', 'handmade', 'build', 'creating', 'making', 'made', 'built', 'woodworking', 'sewing'],
-        'Travel & Photography': ['travel', 'trip', 'photography', 'photo', 'adventure', 'explore', 'vacation', 'exploring', 'hidden', 'journey'],
-        'Community & Social': ['community', 'local', 'people', 'social', 'together', 'support', 'volunteer', 'volunteering', 'neighbor', 'group'],
-        'Climate & Environment': ['climate', 'environment', 'climateaction', 'ecofriendly', 'sustainable', 'green', 'renewable', 'energy', 'carbon', 'pollution'],
-        'Fashion & Style': ['fashion', 'style', 'outfit', 'wear', 'look', 'clothing', 'valentine', 'dress', 'trendy', 'wardrobe'],
-        'Daily Life & Reflections': ['day', 'today', 'morning', 'life', 'time', 'spent', 'grateful', 'reflecting', 'simple', 'moment'],
-        'Art & Creativity': ['art', 'artist', 'creative', 'painting', 'design', 'music', 'drawing', 'sculpture', 'gallery', 'canvas'],
-        'Entertainment & Media': ['meme', 'best', 'watch', 'perfect', 'favorite', 'amazing', 'movie', 'show', 'video', 'entertainment'],
-        'Personal Growth': ['new', 'first', 'thought', 'perspective', 'deepthoughts', 'moral', 'growth', 'learning', 'self', 'wisdom'],
+        'Food & Cooking': ['recipe', 'cooking', 'cook', 'chef', 'baking', 'meal', 'dish', 'dinner', 'lunch', 'ingredient', 'kitchen', 'delicious', 'tasty', 'flavor', 'eat', 'food'],
+        'Fitness & Health': ['workout', 'fitness', 'gym', 'exercise', 'training', 'cardio', 'muscle', 'strength', 'running', 'weight', 'yoga', 'reps', 'protein', 'health', 'fit'],
+        'Mental Health': ['mental', 'therapy', 'anxiety', 'depression', 'mindfulness', 'wellness', 'selfcare', 'healing', 'counseling', 'mentalhealth'],
+        'Books & Reading': ['book', 'read', 'reading', 'novel', 'author', 'library', 'literature', 'chapter', 'page', 'fiction', 'story', 'bookclub', 'bookworm', 'writing', 'meme'],
+        'Nature & Outdoors': ['hiking', 'trail', 'mountain', 'forest', 'wilderness', 'camping', 'wildlife', 'backpacking', 'naturelover', 'scenic', 'peak', 'outdoor', 'adventure', 'nature'],
+        'Technology & Gaming': ['tech', 'game', 'gaming', 'gamer', 'console', 'gameplay', 'streamer', 'coding', 'programming', 'software', 'computer', 'digital', 'esports', 'technology'],
+        'Politics & News': ['politics', 'political', 'government', 'election', 'vote', 'policy', 'legislation', 'campaign', 'senate', 'congress', 'democrat', 'republican', 'debate'],
+        'DIY & Crafts': ['diy', 'craft', 'crafting', 'handmade', 'woodworking', 'sewing', 'knitting', 'pottery', 'maker', 'upcycling', 'tutorial', 'project', 'build', 'building'],
+        'Travel & Photography': ['travel', 'trip', 'vacation', 'destination', 'wanderlust', 'photography', 'photographer', 'camera', 'lens', 'passport', 'tourist', 'journey', 'explore'],
+        'Community & Social': ['community', 'volunteer', 'charity', 'nonprofit', 'activism', 'neighbor', 'civic', 'volunteering', 'local', 'outreach', 'fundraiser', 'together', 'support'],
+        'Climate & Environment': ['climate', 'climatechange', 'environmental', 'sustainability', 'renewable', 'carbon', 'emissions', 'conservation', 'pollution', 'green', 'ecofriendly', 'environment', 'change'],
+        'Fashion & Style': ['fashion', 'style', 'outfit', 'fashionista', 'trendy', 'wardrobe', 'designer', 'clothing', 'wear', 'dress', 'aesthetic', 'ootd', 'look'],
+        'Art & Creativity': ['art', 'artist', 'painting', 'drawing', 'sculpture', 'gallery', 'canvas', 'illustration', 'sketch', 'artistic', 'creative', 'music', 'design'],
+        'Entertainment & Media': ['movie', 'film', 'series', 'streaming', 'netflix', 'show', 'episode', 'watch', 'cinema', 'actor', 'hollywood', 'video', 'funny', 'meme', 'best'],
+        'Personal Growth': ['growth', 'mindset', 'motivation', 'inspiration', 'goals', 'achievement', 'learning', 'wisdom', 'progress', 'perspective', 'transformation', 'development', 'real', 'energy'],
+        'Feelings & Emotions': ['feeling', 'feel', 'felt', 'like', 'love', 'hate', 'happy', 'sad', 'mood', 'emotion'],
+        'Daily Moments': ['today', 'simple', 'moment'],
+        'Routine & Habits': ['day', 'classic', 'routine', 'daily', 'morning', 'coffee', 'breakfast'],
+        'Current State': ['still', 'now', 'currently'],
+        'Quality & Perfection': ['perfect', 'great', 'awesome', 'amazing'],
+        'Time Spent': ['time', 'spent', 'hour', 'week', 'weekend', 'year', 'ago'],
+        'Trying Things': ['tried', 'try', 'attempt', 'testing'],
+        'Getting Things': ['got', 'bought', 'received', 'latest'],
+        'Completing Things': ['finished', 'completed', 'done', 'finally'],
+        'New Experiences': ['new', 'first', 'discover', 'fresh', 'another', 'recent'],
+        'Social Observations': ['people', 'everyone', 'someone', 'anyone', 'damn', 'guy', 'person', 'friend'],
+        'Life Philosophy': ['life', 'never', 'always', 'think', 'thought'],
+        'Understanding': ['knew', 'know', 'understand', 'realize'],
     }
-    
+ 
     # Count matches for each category with better scoring
     category_scores = []
     
@@ -310,7 +331,7 @@ def main():
     # I chose range 5-20 based on dataset size and diversity
     # It can cover both broad themes and specific topics
     optimal_k, coherence_scores = find_optimal_k(corpus, dictionary, documents, k_range=range(5, 21))
-    
+
     # Train final LDA model with optimal K
     lda_model = train_lda_model(corpus, dictionary, num_topics=optimal_k)
 
@@ -337,60 +358,51 @@ if __name__ == "__main__":
 
 """
 Loaded 1303 posts from database
-Dictionary created with 707 terms
+Dictionary created with 685 terms
 
 Finding optimal K by testing different numbers of topics...
 Testing K values from 5 to 20
-K     Coherence Score
+K     Coherence Score     
 -------------------------
-5     0.3207
-6     0.3312
-7     0.3499
-8     0.3421
-9     0.3356
-10    0.3355
-11    0.3490
-12    0.3512
-13    0.3386
-14    0.3474
-15    0.3396
-16    0.3610
-17    0.3369
-18    0.3459
-19    0.3553
-20    0.3621
+5     0.3700
+6     0.3759
+7     0.4289
+8     0.4130
+9     0.3971
+10    0.4312
+11    0.3854
+12    0.4132
+13    0.4089
+14    0.4230
+15    0.4187
+16    0.3891
+17    0.3877
+18    0.4053
+19    0.4114
+20    0.3980
 
-Optimal K = 20 (Coherence: 0.3621)
+# This optimal K could be affected by the change of custom stopwords or preprocessing steps
+Optimal K = 10 (Coherence: 0.4312)
 
-Training final LDA model with K=20 topics...
+Training final LDA model with K=10 topics...
 Model training completed
-Final Model Coherence Score: 0.3614 (higher is better)
-Final Model Perplexity: -6.5514 (lower is better)
+Final Model Coherence Score: 0.4152 (higher is better)
+Final Model Perplexity: -6.4902 (lower is better)
 
 ================================================================================
 TOPIC DISTRIBUTION (All Topics)
 ================================================================================
 
-Topic 1 (Daily Life & Reflections: today, simple): 60 posts (4.6%)
-Topic 2 (Mental Health: health, mental): 49 posts (3.8%)
-Topic 3 (Technology & Gaming): 65 posts (5.0%)
-Topic 4 (Daily Life & Reflections: latest, got): 43 posts (3.3%)
-Topic 5 (Travel & Photography): 69 posts (5.3%)
-Topic 6 (Daily Life & Reflections: day, classic): 52 posts (4.0%)
-Topic 7 (Mental Health: feeling, like): 99 posts (7.6%)
-Topic 8 (Nature & Outdoors): 58 posts (4.5%)
-Topic 9 (Politics & News): 84 posts (6.4%)
-Topic 10 (Daily Life & Reflections: finally, spent): 42 posts (3.2%)
-Topic 11 (Books & Reading): 89 posts (6.8%)
-Topic 12 (Food & Cooking): 69 posts (5.3%)
-Topic 13 (Daily Life & Reflections: spent, knew): 88 posts (6.8%)
-Topic 14 (Personal Growth: still, today): 50 posts (3.8%)
-Topic 15 (Personal Growth: new, perspective): 75 posts (5.8%)
-Topic 16 (Entertainment & Media: perfect, new): 66 posts (5.1%)
-Topic 17 (Community & Social): 53 posts (4.1%)
-Topic 18 (Entertainment & Media: meme, best): 53 posts (4.1%)
-Topic 19 (Daily Life & Reflections: time, tried): 61 posts (4.7%)
-Topic 20 (Climate & Environment): 78 posts (6.0%)
+Topic 1 (Understanding): 131 posts (10.1%)
+Topic 2 (Feelings & Emotions): 146 posts (11.2%)
+Topic 3 (Life Philosophy): 115 posts (8.8%)
+Topic 4 (Personal Growth): 109 posts (8.4%)
+Topic 5 (Fitness & Health): 154 posts (11.8%)
+Topic 6 (Books & Reading): 120 posts (9.2%)
+Topic 7 (Entertainment & Media): 102 posts (7.8%)
+Topic 8 (DIY & Crafts): 112 posts (8.6%)
+Topic 9 (Politics & News): 145 posts (11.1%)
+Topic 10 (Nature & Outdoors): 169 posts (13.0%)
 
 ================================================================================
 TOP 10 TOPICS WITH MOST POSTS (Answer to Exercise 4.1)
@@ -398,14 +410,14 @@ TOP 10 TOPICS WITH MOST POSTS (Answer to Exercise 4.1)
 
 Rank   Topic      Topic Name                     Posts      %
 ----------------------------------------------------------------------
-1      Topic 7   Mental Health: feeling, like   99            7.6%
-2      Topic 11  Books & Reading                89            6.8%
-3      Topic 13  Daily Life & Reflections: spent, knew 88            6.8%
-4      Topic 9   Politics & News                84            6.4%
-5      Topic 20  Climate & Environment          78            6.0%
-6      Topic 15  Personal Growth: new, perspective 75            5.8%
-7      Topic 12  Food & Cooking                 69            5.3%
-8      Topic 5   Travel & Photography           69            5.3%
-9      Topic 16  Entertainment & Media: perfect, new 66            5.1%
-10     Topic 3   Technology & Gaming            65            5.0%
+1      Topic 10  Nature & Outdoors              169          13.0%
+2      Topic 5   Fitness & Health               154          11.8%
+3      Topic 2   Feelings & Emotions            146          11.2%
+4      Topic 9   Politics & News                145          11.1%
+5      Topic 1   Understanding                  131          10.1%
+6      Topic 6   Books & Reading                120           9.2%
+7      Topic 3   Life Philosophy                115           8.8%
+8      Topic 8   DIY & Crafts                   112           8.6%
+9      Topic 4   Personal Growth                109           8.4%
+10     Topic 7   Entertainment & Media          102           7.8%
 """

@@ -1,3 +1,4 @@
+# Explainations for the work are being added as comments
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -180,7 +181,7 @@ def assign_topics_to_posts(posts_df):
     
     topic_labels = {}
     topic_keywords = {}  # Store keywords for display
-    for idx in range(20):
+    for idx in range(10):
         topic_words = lda_model.show_topic(idx, topn=10)
         words = [word for word, _ in topic_words]
         topic_keywords[idx] = ', '.join(words[:3])  # Keep top 3 for reference
@@ -232,7 +233,7 @@ def analyze_sentiment_by_topic(posts_df, topic_labels, topic_keywords):
         pos_pct = row['positive_mean'] * 100
         neg_pct = row['negative_mean'] * 100
         
-        topic_display = f"{topic_name}-({topic_no})"
+        topic_display = f"{topic_name}"
         print(f"{rank:<6} {topic_display:<35} {avg_score:<12.4f} {post_count:<8} {pos_pct:<8.1f} {neg_pct:<8.1f}")
     
     # Detailed analysis for top 3 most positive and negative topics
@@ -386,66 +387,56 @@ Successfully assigned topics to 1303 posts
 Sentiment Summary by Topic (sorted by average compound score):
 Rank   Topic Name                          Avg Score    Posts    Pos%     Neg%
 --------------------------------------------------------------------------------
-1      Entertainment & Media-(17)          0.5401       53       24.7     4.3
-2      Daily Life & Reflections-(0)        0.4645       60       22.6     2.6
-3      Travel & Photography-(4)            0.4042       68       16.3     2.9
-4      Mental Health-(1)                   0.3817       49       19.1     3.2
-5      Nature & Outdoors-(7)               0.3715       57       19.9     5.3
-6      Entertainment & Media-(15)          0.3518       65       18.1     4.5
-7      Climate & Environment-(19)          0.3477       78       16.3     3.2
-8      Daily Life & Reflections-(18)       0.3340       62       17.4     4.8
-9      Daily Life & Reflections-(3)        0.3168       43       17.7     5.8
-10     Daily Life & Reflections-(12)       0.3149       87       19.2     6.1
-11     Daily Life & Reflections-(5)        0.3133       53       17.5     5.1
-12     Technology & Gaming-(2)             0.3072       64       18.4     4.6
-13     Food & Cooking-(11)                 0.3027       68       21.7     7.0
-14     Personal Growth-(13)                0.2901       51       17.0     6.3
-15     Daily Life & Reflections-(9)        0.2774       42       14.3     3.3
-16     Personal Growth-(14)                0.2573       76       16.1     6.5
-17     Mental Health-(6)                   0.2409       98       22.3     9.6
-18     Books & Reading-(10)                0.1894       92       16.6     9.2
-19     Politics & News-(8)                 0.1430       84       14.1     7.8
-20     Community & Social-(16)             0.1202       53       16.7     11.0
+1      Life Philosophy                     0.4078       117      19.8     3.4
+2      Fitness & Health                    0.3930       154      19.1     3.8
+3      Entertainment & Media               0.3766       101      20.7     4.5
+4      Nature & Outdoors                   0.3652       169      18.2     3.9
+5      Books & Reading                     0.3546       119      19.3     5.0
+6      Feelings & Emotions                 0.3234       146      19.1     5.6
+7      Personal Growth                     0.2984       110      20.0     6.6
+8      Politics & News                     0.1833       145      16.1     8.1
+9      DIY & Crafts                        0.1806       112      15.3     8.3
+10     Understanding                       0.1600       130      16.1     10.3
 
 TOP 3 MOST POSITIVE TOPICS
 
-1. Entertainment & Media
-   Keywords: meme, best, new
-   Average compound: 0.5401 | Median: 0.6763
-   Number of posts: 53
-   Positive proportion: 0.247 | Negative proportion: 0.043
+1. Life Philosophy
+   Keywords: life, good, need
+   Average compound: 0.4078 | Median: 0.5719
+   Number of posts: 117
+   Positive proportion: 0.198 | Negative proportion: 0.034
 
-2. Daily Life & Reflections
-   Keywords: today, simple, art
-   Average compound: 0.4645 | Median: 0.5960
-   Number of posts: 60
-   Positive proportion: 0.226 | Negative proportion: 0.026
+2. Fitness & Health
+   Keywords: see, health, mental
+   Average compound: 0.3930 | Median: 0.5106
+   Number of posts: 154
+   Positive proportion: 0.191 | Negative proportion: 0.038
 
-3. Travel & Photography
-   Keywords: new, cant, wait
-   Average compound: 0.4042 | Median: 0.5168
-   Number of posts: 68
-   Positive proportion: 0.163 | Negative proportion: 0.029
+3. Entertainment & Media
+   Keywords: cant, coffee, best
+   Average compound: 0.3766 | Median: 0.5145
+   Number of posts: 101
+   Positive proportion: 0.207 | Negative proportion: 0.045
 
 TOP 3 MOST NEGATIVE TOPICS (Actually 'Least Positive')
 
-1. Community & Social
-   Keywords: people, damn, every
-   Average compound: 0.1202 | Median: 0.4215
-   Number of posts: 53
-   Positive proportion: 0.167 | Negative proportion: 0.110
+1. Understanding
+   Keywords: kid, could, knew
+   Average compound: 0.1600 | Median: 0.1755
+   Number of posts: 130
+   Positive proportion: 0.161 | Negative proportion: 0.103
 
-2. Politics & News
-   Keywords: another, new, debate
-   Average compound: 0.1430 | Median: 0.1230
-   Number of posts: 84
-   Positive proportion: 0.141 | Negative proportion: 0.078
+2. DIY & Crafts
+   Keywords: diy, project, feel
+   Average compound: 0.1806 | Median: 0.2490
+   Number of posts: 112
+   Positive proportion: 0.153 | Negative proportion: 0.083
 
-3. Books & Reading
-   Keywords: people, book, cant
-   Average compound: 0.1894 | Median: 0.3902
-   Number of posts: 92
-   Positive proportion: 0.166 | Negative proportion: 0.092
+3. Politics & News
+   Keywords: another, anyone, else
+   Average compound: 0.1833 | Median: 0.2023
+   Number of posts: 145
+   Positive proportion: 0.161 | Negative proportion: 0.081
 
 Visualization saved as 'sentiment_visualization.png'
 """
