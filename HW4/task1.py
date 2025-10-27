@@ -166,7 +166,7 @@ def find_optimal_k(corpus, dictionary, documents, k_range=range(2, 21)):
     
     Coherence score measures how interpretable the topics are. Higher coherence means the words in each topic are more semantically related, making topics more meaningful and distinct.
 
-    We use c_v coherence as it correlates well with human topic interpretability judgments.
+    I use c_v coherence as it correlates well with human topic interpretability judgments.
 
     c_v is based on a sliding window, a one-set segmentation of the top words, and an indirect confirmation measure that uses normalized pointwise mutual information and the cosine similarity.
     """
